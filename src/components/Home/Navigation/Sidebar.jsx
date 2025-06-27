@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { MessageSquare, BookOpen, Activity, Users } from "react-feather";
 
-const Sidebar = ({ darkMode, activeTab, setActiveTab }) => {
+const Sidebar = ({ darkMode, activeTab, setActiveTab, onHoverChange }) => {
   const [hovered, setHovered] = useState(false);
 
   const tabs = [
@@ -19,8 +19,14 @@ const Sidebar = ({ darkMode, activeTab, setActiveTab }) => {
       initial={{ width: "72px" }}
       animate={{ width: isCollapsed ? 72 : 240 }}
       transition={{ type: "spring", stiffness: 160, damping: 20 }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => {
+        setHovered(true);
+        onHoverChange?.(true);
+      }}
+      onMouseLeave={() => {
+        setHovered(false);
+        onHoverChange?.(false);
+      }}
       className={`h-full flex flex-col ${
         darkMode ? "bg-gray-800" : "bg-white"
       } border-r ${darkMode ? "border-gray-700" : "border-gray-200"}`}
@@ -37,10 +43,10 @@ const Sidebar = ({ darkMode, activeTab, setActiveTab }) => {
             className={`flex items-center w-full p-3 ${
               activeTab === tab.id
                 ? darkMode
-                  ? "bg-gray-700"
-                  : "bg-gray-100"
+                  ? "bg-gray-700 text-gray-100"
+                  : "bg-gray-100 text-gray-800"
                 : ""
-            }`}
+            } ${darkMode ? "text-gray-200" : "text-gray-700"}`}
             onClick={() => setActiveTab(tab.id)}
           >
             <div className="flex-shrink-0">{tab.icon}</div>
