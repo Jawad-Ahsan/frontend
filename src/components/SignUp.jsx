@@ -1,23 +1,40 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Mail, Lock, Eye, EyeOff, Sun, Moon, Check } from "react-feather";
+import {
+  User,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Sun,
+  Moon,
+  Check,
+  AlertCircle,
+} from "react-feather";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const Signup = () => {
+  // Form state
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
+
+  // Error state
   const [errors, setErrors] = useState({
     firstName: "",
     lastName: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    form: "",
   });
+
+  // UI state
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -25,16 +42,19 @@ const Signup = () => {
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
-  // Initialize dark mode from localStorage
+  // Initialize dark mode
   useEffect(() => {
     const savedMode = localStorage.getItem("darkMode") === "true";
     setDarkMode(savedMode);
+    document.body.className = savedMode ? "dark" : "light";
   }, []);
 
+  // Toggle dark mode
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
     localStorage.setItem("darkMode", newMode.toString());
+    document.body.className = newMode ? "dark" : "light";
   };
 
   // Animation variants
@@ -53,6 +73,7 @@ const Signup = () => {
     visible: {
       y: 0,
       opacity: 1,
+      transition: { type: "spring", stiffness: 100 },
     },
   };
 
@@ -62,17 +83,9 @@ const Signup = () => {
   };
 
   // Validation functions
-  const validateName = (name) => {
-    return /^[a-zA-Z]+$/.test(name);
-  };
-
-  const validateEmail = (email) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
-
-  const validatePassword = (password) => {
-    return password.length >= 6;
-  };
+  const validateName = (name) => /^[a-zA-Z\s-']+$/.test(name);
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validatePassword = (password) => password.length >= 8;
 
   const validateForm = () => {
     const newErrors = {
@@ -80,30 +93,31 @@ const Signup = () => {
       lastName: "",
       email: "",
       password: "",
-      confirmPassword: ""
+      confirmPassword: "",
+      form: "",
     };
     let isValid = true;
 
     // First name validation
-    if (!formData.firstName) {
+    if (!formData.firstName.trim()) {
       newErrors.firstName = "First name is required";
       isValid = false;
     } else if (!validateName(formData.firstName)) {
-      newErrors.firstName = "No numbers or special characters allowed";
+      newErrors.firstName = "Only letters and hyphens allowed";
       isValid = false;
     }
 
     // Last name validation
-    if (!formData.lastName) {
+    if (!formData.lastName.trim()) {
       newErrors.lastName = "Last name is required";
       isValid = false;
     } else if (!validateName(formData.lastName)) {
-      newErrors.lastName = "No numbers or special characters allowed";
+      newErrors.lastName = "Only letters and hyphens allowed";
       isValid = false;
     }
 
     // Email validation
-    if (!formData.email) {
+    if (!formData.email.trim()) {
       newErrors.email = "Email is required";
       isValid = false;
     } else if (!validateEmail(formData.email)) {
@@ -116,7 +130,7 @@ const Signup = () => {
       newErrors.password = "Password is required";
       isValid = false;
     } else if (!validatePassword(formData.password)) {
-      newErrors.password = "Password must be at least 6 characters";
+      newErrors.password = "Password must be at least 8 characters";
       isValid = false;
     }
 
@@ -135,40 +149,98 @@ const Signup = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error when user types
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validateForm()) {
-      setIsSubmitting(true);
-      // Simulate API call
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    setErrors((prev) => ({ ...prev, form: "" }));
+
+    try {
+      const backendFormData = {
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        confirm_password: formData.confirmPassword,
+      };
+
+      const response = await axios.post(
+        "http://localhost:8000/signup",
+        backendFormData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          timeout: 5000, // 5 second timeout
+        }
+      );
+
+      // Store user data in localStorage
+      localStorage.setItem("user", JSON.stringify(response.data));
+      setSuccess(true);
+
       setTimeout(() => {
-        console.log("Signup data:", formData);
-        setIsSubmitting(false);
-        setSuccess(true);
-        setTimeout(() => {
-          setSuccess(false);
-          navigate('/mandatory-questionnaire');
-        }, 3000);
+        navigate("/mandatory-questionnaire");
       }, 1500);
+    } catch (error) {
+      console.error("Signup error:", error);
+
+      if (error.response) {
+        // Backend validation errors
+        const backendError = error.response.data.detail;
+        if (backendError === "Email already registered") {
+          setErrors((prev) => ({ ...prev, email: "Email already registered" }));
+        } else if (backendError === "Passwords don't match") {
+          setErrors((prev) => ({
+            ...prev,
+            confirmPassword: "Passwords don't match",
+          }));
+        } else {
+          setErrors((prev) => ({
+            ...prev,
+            form: "Registration failed. Please try again.",
+          }));
+        }
+      } else if (error.request) {
+        // Network errors
+        setErrors((prev) => ({
+          ...prev,
+          form: "Network error. Please check your connection.",
+        }));
+      } else {
+        // Other errors
+        setErrors((prev) => ({
+          ...prev,
+          form: "An unexpected error occurred.",
+        }));
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <motion.div
       className={`min-h-screen flex items-center justify-center transition-colors duration-300 p-4 ${
-        darkMode 
-          ? 'bg-gradient-to-br from-gray-800 to-gray-900 text-gray-100' 
-          : 'bg-gradient-to-br from-indigo-50 to-blue-100 text-gray-900'
+        darkMode
+          ? "bg-gray-900 text-gray-100"
+          : "bg-gradient-to-br from-indigo-50 to-blue-100 text-gray-900"
       }`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
       <motion.div
-        className={`w-full max-w-md rounded-xl shadow-lg overflow-hidden ${
-          darkMode ? 'bg-gray-700' : 'bg-white'
+        className={`w-full max-w-md rounded-xl shadow-lg overflow-hidden transition-colors duration-300 ${
+          darkMode ? "bg-gray-800" : "bg-white"
         }`}
         variants={containerVariants}
         initial="hidden"
@@ -178,11 +250,14 @@ const Signup = () => {
           {/* Dark Mode Toggle */}
           <motion.button
             onClick={toggleDarkMode}
-            className={`absolute top-4 right-4 p-2 rounded-full ${
-              darkMode ? 'bg-gray-600 text-yellow-300' : 'bg-gray-100 text-gray-700'
+            className={`absolute top-4 right-4 p-2 rounded-full transition-colors duration-200 ${
+              darkMode
+                ? "bg-gray-700 text-yellow-300"
+                : "bg-gray-100 text-gray-700"
             }`}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
+            aria-label="Toggle dark mode"
           >
             {darkMode ? <Sun size={18} /> : <Moon size={18} />}
           </motion.button>
@@ -191,28 +266,41 @@ const Signup = () => {
           <motion.div className="text-center mb-8" variants={itemVariants}>
             <motion.h1
               className={`text-3xl font-bold mb-2 ${
-                darkMode ? 'text-indigo-400' : 'text-indigo-600'
+                darkMode ? "text-indigo-400" : "text-indigo-600"
               }`}
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 200 }}
             >
               MindMate
             </motion.h1>
-            <motion.p 
-              className={darkMode ? 'text-gray-300' : 'text-gray-600'} 
-              variants={itemVariants}
-            >
+            <motion.p className={darkMode ? "text-gray-400" : "text-gray-600"}>
               Begin your wellness journey
             </motion.p>
           </motion.div>
 
-          {/* Success Message */}
+          {/* Form Messages */}
           <AnimatePresence>
+            {errors.form && (
+              <motion.div
+                className={`mb-4 p-3 rounded-lg flex items-center gap-2 ${
+                  darkMode
+                    ? "bg-red-900/30 text-red-300"
+                    : "bg-red-100 text-red-700"
+                }`}
+                variants={successVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+              >
+                <AlertCircle size={18} className="flex-shrink-0" />
+                <span>{errors.form}</span>
+              </motion.div>
+            )}
+
             {success && (
               <motion.div
                 className={`mb-4 p-3 rounded-lg flex items-center gap-2 ${
-                  darkMode ? 'bg-green-900/30 text-green-300' : 'bg-green-100 text-green-700'
+                  darkMode
+                    ? "bg-green-900/30 text-green-300"
+                    : "bg-green-100 text-green-700"
                 }`}
                 variants={successVariants}
                 initial="hidden"
@@ -227,11 +315,13 @@ const Signup = () => {
 
           {/* Signup Form */}
           <motion.form onSubmit={handleSubmit} variants={containerVariants}>
-            {/* First Name */}
+            {/* First Name Field */}
             <motion.div className="mb-4" variants={itemVariants}>
-              <label className={`block text-sm font-medium mb-2 ${
-                darkMode ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  darkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
                 First Name
               </label>
               <div className="relative">
@@ -241,16 +331,17 @@ const Signup = () => {
                 <input
                   type="text"
                   name="firstName"
-                  className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                    errors.firstName 
-                      ? "border-red-500" 
-                      : darkMode 
-                        ? "border-gray-600 bg-gray-800 text-white focus:ring-indigo-400" 
-                        : "border-gray-300 bg-white text-gray-900 focus:ring-indigo-500"
+                  className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                    errors.firstName
+                      ? "border-red-500 focus:ring-red-300"
+                      : darkMode
+                      ? "border-gray-600 bg-gray-700 text-white focus:ring-indigo-500 focus:border-indigo-500"
+                      : "border-gray-300 bg-white text-gray-900 focus:ring-indigo-500 focus:border-indigo-500"
                   }`}
                   placeholder="John"
                   value={formData.firstName}
                   onChange={handleChange}
+                  disabled={isSubmitting}
                 />
               </div>
               <AnimatePresence>
@@ -267,11 +358,13 @@ const Signup = () => {
               </AnimatePresence>
             </motion.div>
 
-            {/* Last Name */}
+            {/* Last Name Field */}
             <motion.div className="mb-4" variants={itemVariants}>
-              <label className={`block text-sm font-medium mb-2 ${
-                darkMode ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  darkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
                 Last Name
               </label>
               <div className="relative">
@@ -281,16 +374,17 @@ const Signup = () => {
                 <input
                   type="text"
                   name="lastName"
-                  className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                    errors.lastName 
-                      ? "border-red-500" 
-                      : darkMode 
-                        ? "border-gray-600 bg-gray-800 text-white focus:ring-indigo-400" 
-                        : "border-gray-300 bg-white text-gray-900 focus:ring-indigo-500"
+                  className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                    errors.lastName
+                      ? "border-red-500 focus:ring-red-300"
+                      : darkMode
+                      ? "border-gray-600 bg-gray-700 text-white focus:ring-indigo-500 focus:border-indigo-500"
+                      : "border-gray-300 bg-white text-gray-900 focus:ring-indigo-500 focus:border-indigo-500"
                   }`}
                   placeholder="Doe"
                   value={formData.lastName}
                   onChange={handleChange}
+                  disabled={isSubmitting}
                 />
               </div>
               <AnimatePresence>
@@ -307,11 +401,13 @@ const Signup = () => {
               </AnimatePresence>
             </motion.div>
 
-            {/* Email */}
+            {/* Email Field */}
             <motion.div className="mb-4" variants={itemVariants}>
-              <label className={`block text-sm font-medium mb-2 ${
-                darkMode ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  darkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
                 Email
               </label>
               <div className="relative">
@@ -321,16 +417,17 @@ const Signup = () => {
                 <input
                   type="email"
                   name="email"
-                  className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                    errors.email 
-                      ? "border-red-500" 
-                      : darkMode 
-                        ? "border-gray-600 bg-gray-800 text-white focus:ring-indigo-400" 
-                        : "border-gray-300 bg-white text-gray-900 focus:ring-indigo-500"
+                  className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                    errors.email
+                      ? "border-red-500 focus:ring-red-300"
+                      : darkMode
+                      ? "border-gray-600 bg-gray-700 text-white focus:ring-indigo-500 focus:border-indigo-500"
+                      : "border-gray-300 bg-white text-gray-900 focus:ring-indigo-500 focus:border-indigo-500"
                   }`}
                   placeholder="your@email.com"
                   value={formData.email}
                   onChange={handleChange}
+                  disabled={isSubmitting}
                 />
               </div>
               <AnimatePresence>
@@ -347,11 +444,13 @@ const Signup = () => {
               </AnimatePresence>
             </motion.div>
 
-            {/* Password */}
+            {/* Password Field */}
             <motion.div className="mb-4" variants={itemVariants}>
-              <label className={`block text-sm font-medium mb-2 ${
-                darkMode ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  darkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
                 Password
               </label>
               <div className="relative">
@@ -361,26 +460,34 @@ const Signup = () => {
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
-                  className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                    errors.password 
-                      ? "border-red-500" 
-                      : darkMode 
-                        ? "border-gray-600 bg-gray-800 text-white focus:ring-indigo-400" 
-                        : "border-gray-300 bg-white text-gray-900 focus:ring-indigo-500"
+                  className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                    errors.password
+                      ? "border-red-500 focus:ring-red-300"
+                      : darkMode
+                      ? "border-gray-600 bg-gray-700 text-white focus:ring-indigo-500 focus:border-indigo-500"
+                      : "border-gray-300 bg-white text-gray-900 focus:ring-indigo-500 focus:border-indigo-500"
                   }`}
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={handleChange}
+                  disabled={isSubmitting}
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={isSubmitting}
                 >
                   {showPassword ? (
-                    <EyeOff className="text-gray-400" size={18} />
+                    <EyeOff
+                      className="text-gray-400 hover:text-gray-500"
+                      size={18}
+                    />
                   ) : (
-                    <Eye className="text-gray-400" size={18} />
+                    <Eye
+                      className="text-gray-400 hover:text-gray-500"
+                      size={18}
+                    />
                   )}
                 </button>
               </div>
@@ -398,11 +505,13 @@ const Signup = () => {
               </AnimatePresence>
             </motion.div>
 
-            {/* Confirm Password */}
+            {/* Confirm Password Field */}
             <motion.div className="mb-6" variants={itemVariants}>
-              <label className={`block text-sm font-medium mb-2 ${
-                darkMode ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  darkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
                 Confirm Password
               </label>
               <div className="relative">
@@ -412,26 +521,34 @@ const Signup = () => {
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
-                  className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                    errors.confirmPassword 
-                      ? "border-red-500" 
-                      : darkMode 
-                        ? "border-gray-600 bg-gray-800 text-white focus:ring-indigo-400" 
-                        : "border-gray-300 bg-white text-gray-900 focus:ring-indigo-500"
+                  className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                    errors.confirmPassword
+                      ? "border-red-500 focus:ring-red-300"
+                      : darkMode
+                      ? "border-gray-600 bg-gray-700 text-white focus:ring-indigo-500 focus:border-indigo-500"
+                      : "border-gray-300 bg-white text-gray-900 focus:ring-indigo-500 focus:border-indigo-500"
                   }`}
                   placeholder="••••••••"
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                  disabled={isSubmitting}
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isSubmitting}
                 >
                   {showConfirmPassword ? (
-                    <EyeOff className="text-gray-400" size={18} />
+                    <EyeOff
+                      className="text-gray-400 hover:text-gray-500"
+                      size={18}
+                    />
                   ) : (
-                    <Eye className="text-gray-400" size={18} />
+                    <Eye
+                      className="text-gray-400 hover:text-gray-500"
+                      size={18}
+                    />
                   )}
                 </button>
               </div>
@@ -452,10 +569,10 @@ const Signup = () => {
             {/* Submit Button */}
             <motion.button
               className={`w-full font-medium py-2 px-4 rounded-lg transition duration-200 flex justify-center items-center ${
-                darkMode 
-                  ? 'bg-indigo-500 hover:bg-indigo-600' 
-                  : 'bg-indigo-600 hover:bg-indigo-700'
-              } text-white`}
+                darkMode
+                  ? "bg-indigo-600 hover:bg-indigo-700"
+                  : "bg-indigo-600 hover:bg-indigo-700"
+              } text-white disabled:opacity-70`}
               type="submit"
               variants={itemVariants}
               whileHover={{ scale: 1.02 }}
@@ -477,25 +594,23 @@ const Signup = () => {
           {/* Login Link */}
           <motion.div
             className={`text-center mt-6 text-sm ${
-              darkMode ? 'text-gray-400' : 'text-gray-600'
+              darkMode ? "text-gray-400" : "text-gray-600"
             }`}
             variants={itemVariants}
           >
             Already have an account?{" "}
-            <a
-              href="#"
+            <button
+              type="button"
               className={`font-medium ${
-                darkMode 
-                  ? 'text-indigo-400 hover:text-indigo-300' 
-                  : 'text-indigo-600 hover:text-indigo-800'
+                darkMode
+                  ? "text-indigo-400 hover:text-indigo-300"
+                  : "text-indigo-600 hover:text-indigo-800"
               }`}
-              onClick={(e) => {
-                e.preventDefault();
-                navigate('/login');
-              }}
+              onClick={() => navigate("/login")}
+              disabled={isSubmitting}
             >
               Sign in
-            </a>
+            </button>
           </motion.div>
         </div>
       </motion.div>
