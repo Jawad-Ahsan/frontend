@@ -9,8 +9,10 @@ import {
   EyeOff,
   Sun,
   Moon,
+  AlertCircle,
 } from "react-feather";
 import { useNavigate, useLocation } from "react-router-dom";
+import axios from "axios";
 
 const Login = () => {
   const location = useLocation();
@@ -26,7 +28,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [errors, setErrors] = useState({ email: "", password: "" });
+  const [errors, setErrors] = useState({ email: "", password: "", form: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
@@ -63,7 +65,7 @@ const Login = () => {
 
   // Validation
   const validate = () => {
-    const newErrors = { email: "", password: "" };
+    const newErrors = { email: "", password: "", form: "" };
     let isValid = true;
 
     if (!email) {
@@ -86,16 +88,62 @@ const Login = () => {
     return isValid;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validate()) {
-      setIsSubmitting(true);
-      // Simulate API call
-      setTimeout(() => {
-        console.log("Logging in with:", email, password);
-        setIsSubmitting(false);
-        navigate("/home");
-      }, 1500);
+    if (!validate()) return;
+
+    setIsSubmitting(true);
+    setErrors({ ...errors, form: "" });
+
+    try {
+      const formData = new URLSearchParams();
+      formData.append("username", email);
+      formData.append("password", password);
+
+      const response = await axios.post(
+        "http://localhost:8000/login",
+        formData,
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
+
+      // Store authentication data
+      localStorage.setItem("access_token", response.data.access_token);
+      localStorage.setItem("user_id", response.data.user_id);
+
+      // Navigate to home
+      navigate("/home");
+    } catch (error) {
+      console.error("Login error:", error);
+
+      if (error.response) {
+        if (error.response.status === 401) {
+          setErrors({
+            ...errors,
+            form: "Invalid email or password",
+          });
+        } else {
+          setErrors({
+            ...errors,
+            form: "An error occurred. Please try again.",
+          });
+        }
+      } else if (error.request) {
+        setErrors({
+          ...errors,
+          form: "Network error. Please check your connection.",
+        });
+      } else {
+        setErrors({
+          ...errors,
+          form: "An unexpected error occurred.",
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -153,6 +201,25 @@ const Login = () => {
             </motion.p>
           </motion.div>
 
+          {/* Form Error Message */}
+          <AnimatePresence>
+            {errors.form && (
+              <motion.div
+                className={`mb-4 p-3 rounded-lg flex items-center gap-2 ${
+                  darkMode
+                    ? "bg-red-900/30 text-red-300"
+                    : "bg-red-100 text-red-700"
+                }`}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <AlertCircle size={18} />
+                <span>{errors.form}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Login Form */}
           <motion.form onSubmit={handleSubmit} variants={containerVariants}>
             {/* Email Field */}
@@ -180,6 +247,7 @@ const Login = () => {
                   placeholder="your@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={isSubmitting}
                 />
               </div>
               <AnimatePresence>
@@ -221,11 +289,13 @@ const Login = () => {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isSubmitting}
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={isSubmitting}
                 >
                   {showPassword ? (
                     <EyeOff className="text-gray-400" size={18} />
@@ -272,7 +342,7 @@ const Login = () => {
                 darkMode
                   ? "bg-indigo-500 hover:bg-indigo-600"
                   : "bg-indigo-600 hover:bg-indigo-700"
-              } text-white`}
+              } text-white disabled:opacity-70`}
               type="submit"
               variants={itemVariants}
               whileHover={{ scale: 1.02 }}

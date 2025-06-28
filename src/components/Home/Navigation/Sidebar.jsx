@@ -1,9 +1,13 @@
+// src/components/Home/Navigation/Sidebar.jsx
+
 import { useState } from "react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 import { motion } from "framer-motion";
 import { MessageSquare, BookOpen, Activity, Users } from "react-feather";
 
-const Sidebar = ({ darkMode, activeTab, setActiveTab, onHoverChange }) => {
+const Sidebar = ({ darkMode, activeTab, onHoverChange }) => {
   const [hovered, setHovered] = useState(false);
+  const navigate = useNavigate(); // Initialize navigate
 
   const tabs = [
     { id: "chat", icon: <MessageSquare size={20} />, label: "Chat" },
@@ -13,6 +17,10 @@ const Sidebar = ({ darkMode, activeTab, setActiveTab, onHoverChange }) => {
   ];
 
   const isCollapsed = !hovered;
+
+  const handleTabClick = (tabId) => {
+    navigate(`/home/${tabId}`); // Navigate to the correct route
+  };
 
   return (
     <motion.aside
@@ -31,29 +39,39 @@ const Sidebar = ({ darkMode, activeTab, setActiveTab, onHoverChange }) => {
         darkMode ? "bg-gray-800" : "bg-white"
       } border-r ${darkMode ? "border-gray-700" : "border-gray-200"}`}
     >
-      <nav className="flex-1 overflow-y-auto py-2">
+      <nav className="flex-1 overflow-y-auto py-4 space-y-2">
         {tabs.map((tab) => (
-          <motion.button
-            key={tab.id}
-            whileHover={{
-              backgroundColor: darkMode
-                ? "rgba(55, 65, 81, 0.5)"
-                : "rgba(243, 244, 246, 0.5)",
-            }}
-            className={`flex items-center w-full p-3 ${
-              activeTab === tab.id
-                ? darkMode
-                  ? "bg-gray-700 text-gray-100"
-                  : "bg-gray-100 text-gray-800"
-                : ""
-            } ${darkMode ? "text-gray-200" : "text-gray-700"}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <div className="flex-shrink-0">{tab.icon}</div>
-            {!isCollapsed && (
-              <span className="ml-3 text-sm font-medium">{tab.label}</span>
-            )}
-          </motion.button>
+          <div key={tab.id} className="px-2">
+            <motion.button
+              whileHover={{
+                backgroundColor: darkMode
+                  ? "rgba(55, 65, 81, 1)"
+                  : "rgba(243, 244, 246, 1)",
+              }}
+              className={`flex items-center w-full p-3 rounded-md transition-colors duration-200 ${
+                activeTab === tab.id
+                  ? darkMode
+                    ? "bg-gray-700 text-white"
+                    : "bg-gray-100 text-gray-900"
+                  : darkMode
+                  ? "text-gray-400 hover:text-white"
+                  : "text-gray-500 hover:text-gray-900"
+              }`}
+              onClick={() => handleTabClick(tab.id)}
+            >
+              <div className="flex-shrink-0">{tab.icon}</div>
+              {!isCollapsed && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="ml-3 text-sm font-medium"
+                >
+                  {tab.label}
+                </motion.span>
+              )}
+            </motion.button>
+          </div>
         ))}
       </nav>
     </motion.aside>
