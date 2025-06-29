@@ -393,24 +393,40 @@ const Login = () => {
             <motion.button
               className={`p-3 rounded-full transition duration-200 ${
                 darkMode
-                  ? "bg-blue-900/30 text-blue-400 hover:bg-blue-800/50"
-                  : "bg-blue-100 text-blue-600 hover:bg-blue-200"
+                  ? "bg-white/10 hover:bg-white/20"
+                  : "bg-gray-100 hover:bg-gray-200"
               }`}
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() =>
+                (window.location.href = "http://localhost:8000/auth/google")
+              }
+              disabled={isSubmitting}
             >
-              <Facebook size={20} />
-            </motion.button>
-            <motion.button
-              className={`p-3 rounded-full transition duration-200 ${
-                darkMode
-                  ? "bg-gray-600 text-gray-300 hover:bg-gray-500"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Linkedin size={20} />
+              {/* Google Multi-color G Icon */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 533.5 544.3"
+              >
+                <path
+                  fill="#4285F4"
+                  d="M533.5 278.4c0-17.4-1.5-34.1-4.3-50.2H272v95.1h146.9c-6.3 34.1-25.3 62.9-54.1 82.3v68h87.3c51.2-47.1 81.4-116.4 81.4-195.2z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M272 544.3c73.7 0 135.5-24.4 180.6-66.2l-87.3-68c-24.3 16.3-55.4 26.1-93.3 26.1-71.6 0-132.3-48.3-154-113.5h-90.5v71.1c45.4 89.9 137.7 150.5 244.5 150.5z"
+                />
+                <path
+                  fill="#FBBC04"
+                  d="M118 322.7c-10.5-30.9-10.5-64.1 0-95l-90.5-71.1C4.7 206.5 0 237.9 0 272s4.7 65.5 27.5 115.4L118 322.7z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M272 107.7c39.9 0 75.9 13.7 104.3 40.6l78.1-78.1C407.4 24.3 345.6 0 272 0 165.2 0 72.9 60.6 27.5 150.5l90.5 71.1C139.7 156 200.4 107.7 272 107.7z"
+                />
+              </svg>
             </motion.button>
           </motion.div>
 
