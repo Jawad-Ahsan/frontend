@@ -109,10 +109,17 @@ const Login = () => {
           },
         }
       );
+      // Verify token exists in response
+      if (!response.data?.access_token) {
+        throw new Error("No access token received");
+      }
 
       // Store authentication data
       localStorage.setItem("access_token", response.data.access_token);
       localStorage.setItem("user_id", response.data.user_id);
+
+      // Verify token storage
+      console.log("Stored token:", localStorage.getItem("access_token"));
 
       // Navigate to home
       navigate("/home");

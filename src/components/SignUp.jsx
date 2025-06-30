@@ -172,19 +172,38 @@ const Signup = () => {
         confirm_password: formData.confirmPassword,
       };
 
-      const response = await axios.post(
+      // 1. First sign up the user
+      const signupResponse = await axios.post(
         "http://localhost:8000/signup",
         backendFormData,
         {
           headers: {
             "Content-Type": "application/json",
           },
-          timeout: 5000, // 5 second timeout
+          timeout: 5000,
         }
       );
 
-      // Store user data in localStorage
-      localStorage.setItem("user", JSON.stringify(response.data));
+      // 2. Automatically log in the user after successful signup
+      const loginResponse = await axios.post(
+        "http://localhost:8000/login",
+        new URLSearchParams({
+          username: formData.email.trim(),
+          password: formData.password,
+        }),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          timeout: 5000,
+        }
+      );
+
+      // 3. Store both the user data and authentication tokens
+      localStorage.setItem("user", JSON.stringify(signupResponse.data));
+      localStorage.setItem("access_token", loginResponse.data.access_token);
+      localStorage.setItem("user_id", loginResponse.data.user_id);
+
       setSuccess(true);
 
       setTimeout(() => {
